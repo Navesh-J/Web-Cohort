@@ -1,7 +1,9 @@
 const { Router } = require("express");
 const userMiddleware = require("../middleware/User");
-const { User,Course } = require("../db");
+const { User, Course } = require("../db");
 const router = Router();
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require("../config");
 
 router.post("/signup", async (req, res) => {
     const username = req.body.username;
@@ -16,6 +18,29 @@ router.post("/signup", async (req, res) => {
     });
 });
 
+router.post('/signin', async (req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+
+    const user = await User.find({
+        username,
+        password
+    })
+    if (user) {
+        const token = jwt.sign({
+            username
+        }, JWT_SECRET)
+        res.json({
+            token
+        })
+    } else {
+        res.status(411).json({
+            message: "Incorrect email and password"
+        })
+    }
+
+})
+
 router.get("/courses", async (req, res) => {
     const allCourse = await Course.find({});
     res.json({
@@ -27,28 +52,28 @@ router.post("/courses/:courseId", userMiddleware, (req, res) => {
     const courseId = req.params.courseId;
     const username = req.headers.username;
     User.updateOne({
-        username:username
-    },{
-        "$push":{
-            purchasedCourses:courseId
+        username: username
+    }, {
+        "$push": {
+            purchasedCourses: courseId
         }
     })
     res.json({
-        message:"Purchase Successful"
+        message: "Purchase Successful"
     })
 });
 
-router.get("/purchasedCourses", userMiddleware,async (req, res) => {
+router.get("/purchasedCourses", userMiddleware, async (req, res) => {
     const user = await User.findOne({
-        username:req.headers.username,
+        username: req.headers.username,
     })
     const courses = await Course.find({
-        _id:{
-            "$in":user.purchasedCourses
+        _id: {
+            "$in": user.purchasedCourses
         }
     })
     res.json({
-        courses:courses
+        courses: courses
     })
 });
 
